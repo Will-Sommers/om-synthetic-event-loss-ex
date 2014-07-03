@@ -13,10 +13,13 @@
 
     om/IRenderState
     (render-state [_ {:keys [test-chan]}]
-      (dom/div #js {:onClick #(do
-                                (.log js/console %)
-                                (.log js/console (.. % -timeStamp))
-                                (put! test-chan %))} "Child Component"))))
+      (dom/div #js {:onMouseUp #(do
+                                  (.log js/console %)
+                                  (put! test-chan [:non-persisted %]))
+                    :onMouseDown #(do
+                                   (.log js/console %)
+                                   (.persist %)
+                                   (put! test-chan [:persisted %]))} "Child Component"))))
 
 (defn parent-component [data owner]
 
@@ -29,9 +32,12 @@
     (will-mount [_]
       (let [test-chan (om/get-state owner :test-chan)]
         (go (while true
-              (let [event (<! test-chan)]
-                (.log js/console event)
-                (.log js/console (.. event -timeStamp)))))))
+              (let [[key event] (<! test-chan)]
+                (condp = key
+                  :non-persisted (do (pr "non-persisted")
+                                     (.log js/console event))
+                  :persisted     (do (pr "persisted")
+                                     (.log js/console event))))))))
 
     om/IRenderState
     (render-state [_ {:keys [test-chan]}]
